@@ -1,3 +1,4 @@
+import os
 import re
 import requests
 from selenium import webdriver
@@ -5,13 +6,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urljoin
 from datetime import datetime
 
 # Airtable 설정
-AIRTABLE_API_KEY = "patBy8FRWWiG6P99a.a0670e9dd25c84d028c9f708af81d5f1fb164c3adeb1cee067d100075db8b748"
-AIRTABLE_BASE_ID = "appJFk54sIT9oSiZy"
+AIRTABLE_API_KEY = os.environ.get("AIRTABLE_API_KEY")
+AIRTABLE_BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
 AIRTABLE_TABLE_NAME = "리포트 자료 추출"
 AIRTABLE_URL = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
 HEADERS = {
@@ -19,8 +21,14 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
+# Chrome 옵션 설정
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # headless 모드
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+
 # Selenium WebDriver 초기화
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 wait = WebDriverWait(driver, 10)
 
 # 페이지별 데이터 추출 함수
