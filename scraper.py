@@ -203,6 +203,7 @@ for report in filtered_reports:
                 "리포트명": report["title"],
                 "리포트 링크": report["detail_url"],
                 "PDF파일": [{"url": report["pdf_url"]}],
+                "PDF파일 링크": report["pdf_url"],  # 새로 추가한 PDF 링크 필드
                 "리포트 서머리": report["summary"]
             }
         }
