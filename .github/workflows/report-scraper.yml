@@ -2,7 +2,7 @@ name: Report Scraper
 
 on:
   schedule:
-    - cron: '0 11 * * *'  # 매일 오후 8시 (KST) 실행 (UTC 기준 11시)
+    - cron: '0 3 * * *'  # 매일 낮 12시 (KST) 실행 (UTC 기준 03시)
   workflow_dispatch:  # 수동 실행 옵션
 
 jobs:

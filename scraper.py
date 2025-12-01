@@ -1,6 +1,10 @@
 import os
 import re
 import requests
+from dotenv import load_dotenv
+
+# .env 파일 로드 (로컬 실행용)
+load_dotenv()
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -104,12 +108,46 @@ def extract_economy_report(row):
     except:
         return None
 
+def extract_company_report(row):
+    """종목분석 리포트 데이터 추출"""
+    cols = row.find_elements(By.TAG_NAME, "td")
+    if len(cols) < 5:
+        return None
+       
+    try:
+        # 종목명 (첫 번째 컬럼)
+        stock_element = cols[0].find_element(By.TAG_NAME, "a")
+        stock_name = stock_element.text.strip()
+        
+        # 제목 (두 번째 컬럼)
+        title_element = cols[1].find_element(By.TAG_NAME, "a")
+        
+        # PDF 링크 (네 번째 컬럼 - 첨부)
+        try:
+            pdf_element = cols[3].find_element(By.TAG_NAME, "a")
+            pdf_url = pdf_element.get_attribute("href")
+        except:
+            pdf_url = None
+        
+        return {
+            "category": "종목분석",
+            "stock_name": stock_name,
+            "title": title_element.text.strip(),
+            "company": cols[2].text.strip(),
+            "date": cols[4].text.strip(),
+            "detail_url": urljoin("https://finance.naver.com", title_element.get_attribute("href")),
+            "pdf_url": pdf_url  # 목록에서 직접 PDF URL 추출
+        }
+    except:
+        return None
+
 # 페이지별 추출 함수 매핑
 report_extractors = {
     "https://finance.naver.com/research/industry_list.naver": (extract_industry_report, "산업분석 리포트"),
     "https://finance.naver.com/research/invest_list.naver": (extract_investment_report, "투자정보 리포트"),
     "https://finance.naver.com/research/market_info_list.naver": (extract_market_report, "시황정보 리포트"),
-    "https://finance.naver.com/research/economy_list.naver": (extract_economy_report, "경제분석 리포트")
+    "https://finance.naver.com/research/economy_list.naver": (extract_economy_report, "경제분석 리포트"),
+    "https://finance.naver.com/research/company_list.naver": (extract_company_report, "종목분석 리포트")
 }
 
 # 모든 리포트 메타데이터 저장
@@ -136,11 +174,13 @@ for url, (extractor, report_type) in report_extractors.items():
 
                 all_reports.append({
                     "category": data["category"],
+                    "stock_name": data.get("stock_name"),  # 종목분석 리포트용
                     "title": data["title"],
                     "company": data["company"],
                     "full_date": full_date,
                     "detail_url": data["detail_url"],
-                    "report_type": report_type
+                    "report_type": report_type,
+                    "list_pdf_url": data.get("pdf_url")  # 목록에서 가져온 PDF URL (종목분석용)
                 })
 
             except Exception as e:
@@ -175,12 +215,15 @@ for report in filtered_reports:
         except:
             summary = "요약을 찾을 수 없습니다."
 
-        # PDF URL 추출
-        try:
-            pdf_link = driver.find_element(By.XPATH, "//a[contains(@href, '.pdf')]")
-            pdf_url = urljoin("https://finance.naver.com", pdf_link.get_attribute("href"))
-        except:
-            pdf_url = None
+        # PDF URL 추출 (종목분석은 이미 목록에서 가져온 경우 사용)
+        if report.get("list_pdf_url"):
+            pdf_url = report["list_pdf_url"]
+        else:
+            try:
+                pdf_link = driver.find_element(By.XPATH, "//a[contains(@href, '.pdf')]")
+                pdf_url = urljoin("https://finance.naver.com", pdf_link.get_attribute("href"))
+            except:
+                pdf_url = None
 
         report["summary"] = summary
         report["pdf_url"] = pdf_url
@@ -194,19 +237,23 @@ for report in filtered_reports:
 # Airtable에 업로드
 for report in filtered_reports:
     if report["full_date"] and report["pdf_url"]:
-        report_data = {
-            "fields": {
-                "날짜": report["full_date"],
-                "리포트 종류": report["report_type"],
-                "분류": report["category"],
-                "증권사": report["company"],
-                "리포트명": report["title"],
-                "리포트 링크": report["detail_url"],
-                "PDF파일": [{"url": report["pdf_url"]}],
-                "PDF파일 링크": report["pdf_url"],  # 새로 추가한 PDF 링크 필드
-                "리포트 서머리": report["summary"]
-            }
+        fields = {
+            "날짜": report["full_date"],
+            "리포트 종류": report["report_type"],
+            "분류": report["category"],
+            "증권사": report["company"],
+            "리포트명": report["title"],
+            "리포트 링크": report["detail_url"],
+            "PDF파일": [{"url": report["pdf_url"]}],
+            "PDF파일 링크": report["pdf_url"],
+            "리포트 서머리": report["summary"]
         }
+        
+        # 종목분석 리포트인 경우 종목명 필드 추가
+        if report.get("stock_name"):
+            fields["종목명"] = report["stock_name"]
+        
+        report_data = {"fields": fields}
         try:
             response = requests.post(AIRTABLE_URL, headers=HEADERS, json=report_data)
             if response.status_code == 200:
