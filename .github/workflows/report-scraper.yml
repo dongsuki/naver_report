@@ -1,9 +1,7 @@
 name: Report Scraper
 
 on:
-  schedule:
-    - cron: '0 3 * * *'  # 매일 낮 12시 (KST) 실행 (UTC 기준 03시)
-  workflow_dispatch:  # 수동 실행 옵션
+  workflow_dispatch:  # n8n 또는 수동 실행용
 
 jobs:
   scrape:
@@ -25,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install selenium requests webdriver-manager
+        pip install -r requirements.txt
     
     - name: Run scraper
       env:
