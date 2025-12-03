@@ -7,11 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urljoin
 from datetime import datetime
 
@@ -31,8 +29,8 @@ chrome_options.add_argument("--headless")  # headless 모드
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
-# Selenium WebDriver 초기화
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+# Selenium WebDriver 초기화 (Selenium 4.6+는 자동으로 ChromeDriver 관리)
+driver = webdriver.Chrome(options=chrome_options)
 wait = WebDriverWait(driver, 10)
 
 # 페이지별 데이터 추출 함수
